@@ -33,6 +33,7 @@ import {
   esbuildVersion,
   nxVersion,
   typesNodeVersion,
+  verdaccioVersion,
 } from '../../utils/versions';
 import jsInitGenerator from '../init/init';
 import { PackageJson } from 'nx/src/utils/package-json';
@@ -71,6 +72,12 @@ export async function projectGenerator(
   addProject(tree, options, destinationDir);
 
   tasks.push(addProjectDependencies(tree, options));
+
+  if (options.rootProject && options.publishable) {
+    tasks.push(
+      addDependenciesToPackageJson(tree, {}, { verdaccio: verdaccioVersion })
+    );
+  }
 
   if (options.bundler === 'vite') {
     const { viteConfigurationGenerator } = ensurePackage('@nx/vite', nxVersion);
@@ -195,6 +202,15 @@ function addProject(
 
     if (options.publishable) {
       const publishScriptPath = addMinimalPublishScript(tree);
+
+      if (options.rootProject) {
+        projectConfiguration.targets['local-registry'] = {
+          executor: '@nx/js:verdaccio',
+          options: {
+            port: 4873,
+          },
+        };
+      }
 
       projectConfiguration.targets.publish = {
         command: `node ${publishScriptPath} ${options.name} {args.ver} {args.tag}`,
